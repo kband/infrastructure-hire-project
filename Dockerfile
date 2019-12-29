@@ -8,4 +8,4 @@ COPY app/ app/
 
 WORKDIR /app
 
-CMD [ "gunicorn", "--bind", "0.0.0.0:8080","wsgi:app" ]
+CMD [ "gunicorn", "--access-logfile", "-", "--bind", "0.0.0.0:8080", "wsgi:app"]
