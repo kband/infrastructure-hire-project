@@ -28,15 +28,25 @@ Parameters:
     Type: String
     Default: 10.10.2.0/24
 
-  PrivateSubnet1CidrBlock: 
+  PublicSubnet3CidrBlock: 
     Description: CIDR for subnet
     Type: String
     Default: 10.10.3.0/24
 
-  PrivateSubnet2CidrBlock: 
+  PrivateSubnet1CidrBlock: 
     Description: CIDR for subnet
     Type: String
     Default: 10.10.4.0/24
+
+  PrivateSubnet2CidrBlock: 
+    Description: CIDR for subnet
+    Type: String
+    Default: 10.10.5.0/24
+
+  PrivateSubnet3CidrBlock: 
+    Description: CIDR for subnet
+    Type: String
+    Default: 10.10.6.0/24
 
   AvailabilityZone1: 
     Description: Availability Zone 1
@@ -47,6 +57,11 @@ Parameters:
     Description: Availability Zone 2 
     Type: String
     Default: us-east-1a
+
+  AvailabilityZone3: 
+    Description: Availability Zone 3 
+    Type: String
+    Default: us-east-1c
 
 Resources:
   VPC: 
@@ -82,6 +97,18 @@ Resources:
         - Key: Name
           Value: public-2
 
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone3
+      CidrBlock: !Ref PublicSubnet3CidrBlock
+      Tags: 
+        - Key: Network
+          Value: Public
+        - Key: Name
+          Value: public-3
+
   PrivateSubnet1: 
     Type: AWS::EC2::Subnet
     Properties: 
@@ -106,6 +133,18 @@ Resources:
         - Key: Name
           Value: private-2
 
+  PrivateSubnet3: 
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone3
+      CidrBlock: !Ref PrivateSubnet3CidrBlock
+      Tags: 
+        - Key: Network
+          Value: Private
+        - Key: Name
+          Value: private-3
+
   InternetGateway: 
     Type: AWS::EC2::InternetGateway
     Properties: 
@@ -119,7 +158,7 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  NatGwEip:
+  NatGwEip1:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
@@ -129,11 +168,16 @@ Resources:
     Properties:
       Domain: vpc
 
-  NAT: 
+  NatGwEip3:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NAT1: 
     DependsOn: AttachGateway
     Type: AWS::EC2::NatGateway
     Properties: 
-      AllocationId: !GetAtt NatGwEip.AllocationId
+      AllocationId: !GetAtt NatGwEip1.AllocationId
       SubnetId: !Ref PublicSubnet1
   
   NAT2: 
@@ -143,6 +187,13 @@ Resources:
       AllocationId: !GetAtt NatGwEip2.AllocationId
       SubnetId: !Ref PublicSubnet2
 
+  NAT3: 
+    DependsOn: AttachGateway
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt NatGwEip3.AllocationId
+      SubnetId: !Ref PublicSubnet3
+
   PublicRouteTable: 
     Type: AWS::EC2::RouteTable
     Properties: 
@@ -151,13 +202,29 @@ Resources:
         - Key: Network
           Value: Public
 
-  PrivateRouteTable: 
+  PrivateRouteTable1: 
     Type: AWS::EC2::RouteTable
     Properties: 
       VpcId: !Ref VPC
       Tags: 
         - Key: Network
-          Value: Private
+          Value: Private1
+
+  PrivateRouteTable2: 
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Network
+          Value: Private2
+
+  PrivateRouteTable3: 
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Network
+          Value: Private3
 
   PublicRoute: 
     Type: AWS::EC2::Route
@@ -167,19 +234,29 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PrivateRoute:
+  PrivateRoute1:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
     Properties: 
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NAT
+      NatGatewayId: !Ref NAT1
 
-  PrivateSubnet1RouteTableAssociation: 
-    Type: AWS::EC2::SubnetRouteTableAssociation
+  PrivateRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
     Properties: 
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NAT2
+
+  PrivateRoute3:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties: 
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NAT3
 
   PublicSubnet1RouteTableAssociation: 
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -187,17 +264,35 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
-  PrivateSubnet2RouteTableAssociation: 
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
-
   PublicSubnet2RouteTableAssociation: 
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties: 
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet3RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnet1RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable1
+
+  PrivateSubnet2RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable2
+
+  PrivateSubnet3RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet3
+      RouteTableId: !Ref PrivateRouteTable3
 
   NetworkAcl: 
     Type: AWS::EC2::NetworkAcl
@@ -230,13 +325,43 @@ Resources:
     Properties: 
       SubnetId: !Ref PublicSubnet1
       NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PublicSubnet1
+  
+  PublicSubnet2NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet2
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PublicSubnet2
+
+  PublicSubnet3NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet3
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PublicSubnet3
 
   PrivateSubnet1NetworkAclAssociation: 
     Type: AWS::EC2::SubnetNetworkAclAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PrivateSubnet1
       NetworkAclId: !Ref NetworkAcl
-
+    #DependsOn: PrivateSubnet1
+    
+  PrivateSubnet2NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PrivateSubnet2
+    
+  PrivateSubnet3NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet3
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PrivateSubnet3
+  
   ElasticContainerRepository: 
     Type: AWS::ECR::Repository
     Properties:
@@ -255,12 +380,13 @@ Resources:
       ServiceName: !Join ['', [!Ref Name, !Ref Environment]]
       Cluster: !Join ['-', [!Ref Name, !Ref Environment]] 
       LaunchType: FARGATE
-      DesiredCount: 2
+      DesiredCount: 3
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
             - !Ref PrivateSubnet1
             - !Ref PrivateSubnet2
+            - !Ref PrivateSubnet3
           SecurityGroups:
             - !Ref ContainerSG 
       TaskDefinition: !Ref ElasticContainerServiceTaskDefinition
@@ -358,6 +484,7 @@ Resources:
       Subnets:
         - !Ref PublicSubnet1
         - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
       SecurityGroups: [!Ref 'LoadBalancerSG']
 
   TargetGroup:
