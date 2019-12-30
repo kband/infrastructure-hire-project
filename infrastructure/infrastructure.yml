@@ -41,7 +41,7 @@ Resources:
       EnableDnsHostnames: true
       Tags: 
         - Key: Name
-          Value: !Join ['-', [!Ref Name, !Ref Environment]] 
+          Value: !Join ['-', [!Ref Name, !Ref Environment]]
 
   PublicSubnet1: 
     Type: AWS::EC2::Subnet
@@ -173,3 +173,8 @@ Resources:
     Properties: 
       SubnetId: !Ref PublicSubnet1
       NetworkAclId: !Ref NetworkAcl
+
+  ElasticContainerRepository: 
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Join ['-', [!Ref Name, !Ref Environment]]
