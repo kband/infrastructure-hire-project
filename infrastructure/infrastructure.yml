@@ -22,16 +22,46 @@ Parameters:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.1.0/24
+  
+  PublicSubnet2CidrBlock: 
+    Description: CIDR for subnet
+    Type: String
+    Default: 10.10.2.0/24
+
+  PublicSubnet3CidrBlock: 
+    Description: CIDR for subnet
+    Type: String
+    Default: 10.10.3.0/24
 
   PrivateSubnet1CidrBlock: 
     Description: CIDR for subnet
     Type: String
-    Default: 10.10.3.0/24
+    Default: 10.10.4.0/24
+
+  PrivateSubnet2CidrBlock: 
+    Description: CIDR for subnet
+    Type: String
+    Default: 10.10.5.0/24
+
+  PrivateSubnet3CidrBlock: 
+    Description: CIDR for subnet
+    Type: String
+    Default: 10.10.6.0/24
 
   AvailabilityZone1: 
     Description: Availability Zone 1
     Type: String
     Default: us-east-1b
+
+  AvailabilityZone2: 
+    Description: Availability Zone 2 
+    Type: String
+    Default: us-east-1a
+
+  AvailabilityZone3: 
+    Description: Availability Zone 3 
+    Type: String
+    Default: us-east-1c
 
 Resources:
   VPC: 
@@ -41,7 +71,7 @@ Resources:
       EnableDnsHostnames: true
       Tags: 
         - Key: Name
-          Value: !Join ['-', [!Ref Name, !Ref Environment]] 
+          Value: !Join ['-', [!Ref Name, !Ref Environment]]
 
   PublicSubnet1: 
     Type: AWS::EC2::Subnet
@@ -55,6 +85,30 @@ Resources:
         - Key: Name
           Value: public-1
 
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone2
+      CidrBlock: !Ref PublicSubnet2CidrBlock
+      Tags: 
+        - Key: Network
+          Value: Public
+        - Key: Name
+          Value: public-2
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone3
+      CidrBlock: !Ref PublicSubnet3CidrBlock
+      Tags: 
+        - Key: Network
+          Value: Public
+        - Key: Name
+          Value: public-3
+
   PrivateSubnet1: 
     Type: AWS::EC2::Subnet
     Properties: 
@@ -66,6 +120,30 @@ Resources:
           Value: Private
         - Key: Name
           Value: private-1
+
+  PrivateSubnet2: 
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone2
+      CidrBlock: !Ref PrivateSubnet2CidrBlock
+      Tags: 
+        - Key: Network
+          Value: Private
+        - Key: Name
+          Value: private-2
+
+  PrivateSubnet3: 
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone3
+      CidrBlock: !Ref PrivateSubnet3CidrBlock
+      Tags: 
+        - Key: Network
+          Value: Private
+        - Key: Name
+          Value: private-3
 
   InternetGateway: 
     Type: AWS::EC2::InternetGateway
@@ -80,17 +158,41 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  NatGwEip:
+  NatGwEip1:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
 
-  NAT: 
+  NatGwEip2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGwEip3:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NAT1: 
     DependsOn: AttachGateway
     Type: AWS::EC2::NatGateway
     Properties: 
-      AllocationId: !GetAtt NatGwEip.AllocationId
+      AllocationId: !GetAtt NatGwEip1.AllocationId
       SubnetId: !Ref PublicSubnet1
+  
+  NAT2: 
+    DependsOn: AttachGateway
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt NatGwEip2.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  NAT3: 
+    DependsOn: AttachGateway
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt NatGwEip3.AllocationId
+      SubnetId: !Ref PublicSubnet3
 
   PublicRouteTable: 
     Type: AWS::EC2::RouteTable
@@ -100,13 +202,29 @@ Resources:
         - Key: Network
           Value: Public
 
-  PrivateRouteTable: 
+  PrivateRouteTable1: 
     Type: AWS::EC2::RouteTable
     Properties: 
       VpcId: !Ref VPC
       Tags: 
         - Key: Network
-          Value: Private
+          Value: Private1
+
+  PrivateRouteTable2: 
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Network
+          Value: Private2
+
+  PrivateRouteTable3: 
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Network
+          Value: Private3
 
   PublicRoute: 
     Type: AWS::EC2::Route
@@ -116,25 +234,65 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PrivateRoute:
+  PrivateRoute1:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
     Properties: 
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NAT
+      NatGatewayId: !Ref NAT1
 
-  PrivateSubnet1RouteTableAssociation: 
-    Type: AWS::EC2::SubnetRouteTableAssociation
+  PrivateRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
     Properties: 
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NAT2
+
+  PrivateRoute3:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties: 
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NAT3
 
   PublicSubnet1RouteTableAssociation: 
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties: 
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet3RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet3
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnet1RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable1
+
+  PrivateSubnet2RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable2
+
+  PrivateSubnet3RouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref PrivateSubnet3
+      RouteTableId: !Ref PrivateRouteTable3
 
   NetworkAcl: 
     Type: AWS::EC2::NetworkAcl
@@ -167,9 +325,195 @@ Resources:
     Properties: 
       SubnetId: !Ref PublicSubnet1
       NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PublicSubnet1
+  
+  PublicSubnet2NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet2
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PublicSubnet2
+
+  PublicSubnet3NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties: 
+      SubnetId: !Ref PublicSubnet3
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PublicSubnet3
 
   PrivateSubnet1NetworkAclAssociation: 
     Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties: 
-      SubnetId: !Ref PublicSubnet1
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
       NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PrivateSubnet1
+    
+  PrivateSubnet2NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PrivateSubnet2
+    
+  PrivateSubnet3NetworkAclAssociation: 
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet3
+      NetworkAclId: !Ref NetworkAcl
+    #DependsOn: PrivateSubnet3
+  
+  ElasticContainerRepository: 
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Join ['-', [!Ref Name, !Ref Environment]]
+
+  ElasticContainerServiceCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Join ['-', [!Ref Name, !Ref Environment]] 
+    DependsOn:
+      - PrivateSubnet1
+  
+  ElasticContainerService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Join ['', [!Ref Name, !Ref Environment]]
+      Cluster: !Join ['-', [!Ref Name, !Ref Environment]] 
+      LaunchType: FARGATE
+      DesiredCount: 3
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+            - !Ref PrivateSubnet3
+          SecurityGroups:
+            - !Ref ContainerSG 
+      TaskDefinition: !Ref ElasticContainerServiceTaskDefinition
+      LoadBalancers:
+        - ContainerName: !Ref Name
+          ContainerPort: 8080
+          TargetGroupArn: !Ref 'TargetGroup'
+
+  ElasticContainerServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Join ['-', [!Ref Name, !Ref Environment]]
+      Cpu: 256
+      Memory: 512 
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: !Ref Name
+          Cpu: 256
+          Memory: 512
+          # apparently you can't ref the ECR URI directly :(
+          # format 028315980887.dkr.ecr.us-east-1.amazonaws.com/ops-hire-project-dev:latest
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Name}-${Environment}:latest"
+          PortMappings:
+            - ContainerPort: 8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: ecs
+    DependsOn:
+      - ElasticContainerServiceCluster
+      - Listener
+      - LogGroup
+
+  ECSExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref Name, ExecutionRole]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref Name, TaskRole]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      # ManagedPolicyArns:
+      #   -
+      # Policies:
+      #   -
+  ContainerSG:
+    Type: AWS::EC2::SecurityGroup 
+    Properties:
+      GroupDescription: Access from the load balancer
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+          - SourceSecurityGroupId: !Ref LoadBalancerSG 
+            IpProtocol: -1
+
+  LoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the load balancer
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+          - CidrIp: 0.0.0.0/0
+            FromPort: 80
+            ToPort: 80
+            IpProtocol: "tcp"
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: AttachGateway
+    Properties:
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: '30'
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      SecurityGroups: [!Ref 'LoadBalancerSG']
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 120
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Join ['-', [!Ref Name, !Ref Environment]] 
+      Port: 8080
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPC
+
+  Listener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['/', [/ecs, !Ref Name, !Ref Environment]]
+      RetentionInDays: 3
