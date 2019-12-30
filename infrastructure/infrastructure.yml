@@ -513,3 +513,19 @@ Resources:
     Properties:
       LogGroupName: !Join ['/', [/ecs, !Ref Name, !Ref Environment]]
       RetentionInDays: 3
+
+  DNS:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: cs1.nls.systems
+
+  ALBAlias:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+      Comment: friendly name on ALB
+      HostedZoneId: !Ref DNS
+      Name: ops-hire-project.cs1.nls.systems.
+      Type: A
