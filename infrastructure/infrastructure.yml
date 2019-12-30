@@ -170,7 +170,7 @@ Resources:
 
   PrivateSubnet1NetworkAclAssociation: 
     Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet1
       NetworkAclId: !Ref NetworkAcl
 
@@ -178,3 +178,74 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Join ['-', [!Ref Name, !Ref Environment]]
+
+  ElasticContainerServiceCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Join ['-', [!Ref Name, !Ref Environment]] 
+    DependsOn:
+      - PrivateSubnet1
+
+  ElasticContainerServiceService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Join ['-', [!Ref Name, !Ref Environment]]
+      Cluster: !Join ['-', [!Ref Name, !Ref Environment]] 
+      LaunchType: FARGATE
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PrivateSubnet1
+      TaskDefinition: !Ref ElasticContainerServiceTaskDefinition
+
+  ElasticContainerServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Join ['-', [!Ref Name, !Ref Environment]] 
+      Cpu: 256
+      Memory: 512 
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: !Ref Name
+          Cpu: 256
+          Memory: 512
+          # apparently you can't ref the ECR URI directly :(
+          # format 028315980887.dkr.ecr.us-east-1.amazonaws.com/ops-hire-project-dev:latest
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Name}-${Environment}:latest"
+          PortMappings:
+            - ContainerPort: 8080
+    DependsOn:
+      - ElasticContainerServiceCluster
+
+  ECSExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref Name, ExecutionRole]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref Name, TaskRole]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      # ManagedPolicyArns:
+      #   -
+      # Policies:
+      #   -
