@@ -289,9 +289,16 @@ Resources:
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Name}-${Environment}:latest"
           PortMappings:
             - ContainerPort: 8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: ecs
     DependsOn:
       - ElasticContainerServiceCluster
-      - Listener  
+      - Listener
+      - LogGroup
 
   ECSExecutionRole:
     Type: AWS::IAM::Role
@@ -377,3 +384,9 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['/', [/ecs, !Ref Name, !Ref Environment]]
+      RetentionInDays: 3
