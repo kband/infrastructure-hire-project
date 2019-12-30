@@ -13,73 +13,73 @@ Parameters:
     Type: String
     Default: dev
 
-  VPCCidrBlock: 
+  VPCCidrBlock:
     Description: CIDR for VPC
     Type: String
     Default: 10.10.0.0/16
 
-  PublicSubnet1CidrBlock: 
+  PublicSubnet1CidrBlock:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.1.0/24
-  
-  PublicSubnet2CidrBlock: 
+
+  PublicSubnet2CidrBlock:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.2.0/24
 
-  PublicSubnet3CidrBlock: 
+  PublicSubnet3CidrBlock:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.3.0/24
 
-  PrivateSubnet1CidrBlock: 
+  PrivateSubnet1CidrBlock:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.4.0/24
 
-  PrivateSubnet2CidrBlock: 
+  PrivateSubnet2CidrBlock:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.5.0/24
 
-  PrivateSubnet3CidrBlock: 
+  PrivateSubnet3CidrBlock:
     Description: CIDR for subnet
     Type: String
     Default: 10.10.6.0/24
 
-  AvailabilityZone1: 
+  AvailabilityZone1:
     Description: Availability Zone 1
     Type: String
     Default: us-east-1b
 
-  AvailabilityZone2: 
-    Description: Availability Zone 2 
+  AvailabilityZone2:
+    Description: Availability Zone 2
     Type: String
     Default: us-east-1a
 
-  AvailabilityZone3: 
-    Description: Availability Zone 3 
+  AvailabilityZone3:
+    Description: Availability Zone 3
     Type: String
     Default: us-east-1c
 
 Resources:
-  VPC: 
+  VPC:
     Type: AWS::EC2::VPC
-    Properties: 
+    Properties:
       CidrBlock: !Ref VPCCidrBlock
       EnableDnsHostnames: true
-      Tags: 
+      Tags:
         - Key: Name
           Value: !Join ['-', [!Ref Name, !Ref Environment]]
 
-  PublicSubnet1: 
+  PublicSubnet1:
     Type: AWS::EC2::Subnet
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref PublicSubnet1CidrBlock
-      Tags: 
+      Tags:
         - Key: Network
           Value: Public
         - Key: Name
@@ -87,11 +87,11 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone2
       CidrBlock: !Ref PublicSubnet2CidrBlock
-      Tags: 
+      Tags:
         - Key: Network
           Value: Public
         - Key: Name
@@ -99,62 +99,62 @@ Resources:
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone3
       CidrBlock: !Ref PublicSubnet3CidrBlock
-      Tags: 
+      Tags:
         - Key: Network
           Value: Public
         - Key: Name
           Value: public-3
 
-  PrivateSubnet1: 
+  PrivateSubnet1:
     Type: AWS::EC2::Subnet
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref PrivateSubnet1CidrBlock
-      Tags: 
+      Tags:
         - Key: Network
           Value: Private
         - Key: Name
           Value: private-1
 
-  PrivateSubnet2: 
+  PrivateSubnet2:
     Type: AWS::EC2::Subnet
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone2
       CidrBlock: !Ref PrivateSubnet2CidrBlock
-      Tags: 
+      Tags:
         - Key: Network
           Value: Private
         - Key: Name
           Value: private-2
 
-  PrivateSubnet3: 
+  PrivateSubnet3:
     Type: AWS::EC2::Subnet
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone3
       CidrBlock: !Ref PrivateSubnet3CidrBlock
-      Tags: 
+      Tags:
         - Key: Network
           Value: Private
         - Key: Name
           Value: private-3
 
-  InternetGateway: 
+  InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Properties: 
-      Tags: 
+    Properties:
+      Tags:
         - Key: Network
           Value: Public
 
-  AttachGateway: 
+  AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
@@ -173,63 +173,63 @@ Resources:
     Properties:
       Domain: vpc
 
-  NAT1: 
+  NAT1:
     DependsOn: AttachGateway
     Type: AWS::EC2::NatGateway
-    Properties: 
+    Properties:
       AllocationId: !GetAtt NatGwEip1.AllocationId
       SubnetId: !Ref PublicSubnet1
-  
-  NAT2: 
+
+  NAT2:
     DependsOn: AttachGateway
     Type: AWS::EC2::NatGateway
-    Properties: 
+    Properties:
       AllocationId: !GetAtt NatGwEip2.AllocationId
       SubnetId: !Ref PublicSubnet2
 
-  NAT3: 
+  NAT3:
     DependsOn: AttachGateway
     Type: AWS::EC2::NatGateway
-    Properties: 
+    Properties:
       AllocationId: !GetAtt NatGwEip3.AllocationId
       SubnetId: !Ref PublicSubnet3
 
-  PublicRouteTable: 
+  PublicRouteTable:
     Type: AWS::EC2::RouteTable
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
-      Tags: 
+      Tags:
         - Key: Network
           Value: Public
 
-  PrivateRouteTable1: 
+  PrivateRouteTable1:
     Type: AWS::EC2::RouteTable
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
-      Tags: 
+      Tags:
         - Key: Network
           Value: Private1
 
-  PrivateRouteTable2: 
+  PrivateRouteTable2:
     Type: AWS::EC2::RouteTable
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
-      Tags: 
+      Tags:
         - Key: Network
           Value: Private2
 
-  PrivateRouteTable3: 
+  PrivateRouteTable3:
     Type: AWS::EC2::RouteTable
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
-      Tags: 
+      Tags:
         - Key: Network
           Value: Private3
 
-  PublicRoute: 
+  PublicRoute:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
-    Properties: 
+    Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
@@ -237,7 +237,7 @@ Resources:
   PrivateRoute1:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
-    Properties: 
+    Properties:
       RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NAT1
@@ -245,7 +245,7 @@ Resources:
   PrivateRoute2:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
-    Properties: 
+    Properties:
       RouteTableId: !Ref PrivateRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NAT2
@@ -253,56 +253,56 @@ Resources:
   PrivateRoute3:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
-    Properties: 
+    Properties:
       RouteTableId: !Ref PrivateRouteTable3
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NAT3
 
-  PublicSubnet1RouteTableAssociation: 
+  PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet1
       RouteTableId: !Ref PublicRouteTable
 
-  PublicSubnet2RouteTableAssociation: 
+  PublicSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
-  PublicSubnet3RouteTableAssociation: 
+  PublicSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
 
-  PrivateSubnet1RouteTableAssociation: 
+  PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PrivateSubnet1
       RouteTableId: !Ref PrivateRouteTable1
 
-  PrivateSubnet2RouteTableAssociation: 
+  PrivateSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable2
 
-  PrivateSubnet3RouteTableAssociation: 
+  PrivateSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PrivateSubnet3
       RouteTableId: !Ref PrivateRouteTable3
 
-  NetworkAcl: 
+  NetworkAcl:
     Type: AWS::EC2::NetworkAcl
-    Properties: 
+    Properties:
       VpcId: !Ref VPC
       Tags: []
 
-  InboundHTTPNetworkAclEntry: 
+  InboundHTTPNetworkAclEntry:
     Type: AWS::EC2::NetworkAclEntry
-    Properties: 
+    Properties:
       NetworkAclId: !Ref NetworkAcl
       CidrBlock: 0.0.0.0/0
       Egress: false
@@ -310,9 +310,9 @@ Resources:
       RuleAction: allow
       RuleNumber: 100
 
-  OutboundHTTPNetworkAclEntry: 
+  OutboundHTTPNetworkAclEntry:
     Type: AWS::EC2::NetworkAclEntry
-    Properties: 
+    Properties:
       NetworkAclId: !Ref NetworkAcl
       CidrBlock: 0.0.0.0/0
       Egress: true
@@ -320,49 +320,44 @@ Resources:
       RuleAction: allow
       RuleNumber: 100
 
-  PublicSubnet1NetworkAclAssociation: 
+  PublicSubnet1NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet1
       NetworkAclId: !Ref NetworkAcl
-    #DependsOn: PublicSubnet1
-  
-  PublicSubnet2NetworkAclAssociation: 
+
+  PublicSubnet2NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet2
       NetworkAclId: !Ref NetworkAcl
-    #DependsOn: PublicSubnet2
 
-  PublicSubnet3NetworkAclAssociation: 
+  PublicSubnet3NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
-    Properties: 
+    Properties:
       SubnetId: !Ref PublicSubnet3
       NetworkAclId: !Ref NetworkAcl
-    #DependsOn: PublicSubnet3
 
-  PrivateSubnet1NetworkAclAssociation: 
+  PrivateSubnet1NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1
       NetworkAclId: !Ref NetworkAcl
-    #DependsOn: PrivateSubnet1
-    
-  PrivateSubnet2NetworkAclAssociation: 
+
+  PrivateSubnet2NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet2
       NetworkAclId: !Ref NetworkAcl
-    #DependsOn: PrivateSubnet2
-    
-  PrivateSubnet3NetworkAclAssociation: 
+
+  PrivateSubnet3NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet3
       NetworkAclId: !Ref NetworkAcl
     #DependsOn: PrivateSubnet3
-  
-  ElasticContainerRepository: 
+
+  ElasticContainerRepository:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Join ['-', [!Ref Name, !Ref Environment]]
@@ -370,15 +365,15 @@ Resources:
   ElasticContainerServiceCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: !Join ['-', [!Ref Name, !Ref Environment]] 
+      ClusterName: !Join ['-', [!Ref Name, !Ref Environment]]
     DependsOn:
       - PrivateSubnet1
-  
+
   ElasticContainerService:
     Type: AWS::ECS::Service
     Properties:
       ServiceName: !Join ['', [!Ref Name, !Ref Environment]]
-      Cluster: !Join ['-', [!Ref Name, !Ref Environment]] 
+      Cluster: !Join ['-', [!Ref Name, !Ref Environment]]
       LaunchType: FARGATE
       DesiredCount: 3
       NetworkConfiguration:
@@ -388,7 +383,7 @@ Resources:
             - !Ref PrivateSubnet2
             - !Ref PrivateSubnet3
           SecurityGroups:
-            - !Ref ContainerSG 
+            - !Ref ContainerSG
       TaskDefinition: !Ref ElasticContainerServiceTaskDefinition
       LoadBalancers:
         - ContainerName: !Ref Name
@@ -400,7 +395,7 @@ Resources:
     Properties:
       Family: !Join ['-', [!Ref Name, !Ref Environment]]
       Cpu: 256
-      Memory: 512 
+      Memory: 512
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -453,13 +448,14 @@ Resources:
       #   -
       # Policies:
       #   -
+
   ContainerSG:
-    Type: AWS::EC2::SecurityGroup 
+    Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access from the load balancer
       VpcId: !Ref 'VPC'
       SecurityGroupIngress:
-          - SourceSecurityGroupId: !Ref LoadBalancerSG 
+          - SourceSecurityGroupId: !Ref LoadBalancerSG
             IpProtocol: -1
 
   LoadBalancerSG:
@@ -496,7 +492,7 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       TargetType: ip
-      Name: !Join ['-', [!Ref Name, !Ref Environment]] 
+      Name: !Join ['-', [!Ref Name, !Ref Environment]]
       Port: 8080
       Protocol: HTTP
       UnhealthyThresholdCount: 2
