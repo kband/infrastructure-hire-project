@@ -417,7 +417,6 @@ Resources:
               awslogs-stream-prefix: ecs
     DependsOn:
       - ElasticContainerServiceCluster
-      - Listener
       - LogGroup
 
   ECSExecutionRole:
@@ -464,8 +463,8 @@ Resources:
       VpcId: !Ref 'VPC'
       SecurityGroupIngress:
           - CidrIp: 0.0.0.0/0
-            FromPort: 80
-            ToPort: 80
+            FromPort: 443
+            ToPort: 443
             IpProtocol: "tcp"
 
   LoadBalancer:
@@ -500,12 +499,15 @@ Resources:
   Listener:
     Type: 'AWS::ElasticLoadBalancingV2::Listener'
     Properties:
+      Certificates: 
+        - CertificateArn: !Ref ACM
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-FS-1-2-2019-08
 
   LogGroup:
     Type: AWS::Logs::LogGroup
@@ -528,3 +530,9 @@ Resources:
       HostedZoneId: !Ref DNS
       Name: ops-hire-project.cs1.nls.systems.
       Type: A
+
+  ACM:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: '*.cs1.nls.systems'
+      ValidationMethod: DNS
