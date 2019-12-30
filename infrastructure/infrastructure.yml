@@ -355,7 +355,6 @@ Resources:
     Properties:
       SubnetId: !Ref PrivateSubnet3
       NetworkAclId: !Ref NetworkAcl
-    #DependsOn: PrivateSubnet3
 
   ElasticContainerRepository:
     Type: AWS::ECR::Repository
