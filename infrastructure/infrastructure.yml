@@ -536,3 +536,29 @@ Resources:
     Properties:
       DomainName: '*.cs1.nls.systems'
       ValidationMethod: DNS
+
+  SNSEmail:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint: "nicholaslscott+cs1@gmail.com"
+        Protocol: email
+  
+  SpendingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if AWS spending is over $3
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+      - Name: Currency
+        Value: USD
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+      - !Ref SNSEmail
+      InsufficientDataActions:
+      - !Ref SNSEmail
