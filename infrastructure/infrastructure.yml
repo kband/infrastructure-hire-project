@@ -654,7 +654,7 @@ Resources:
       Period: 900
       EvaluationPeriods: 1
       Threshold: 5
-      ComparisonOperator: LessThanThreshold
+      ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref SNSEmail
       InsufficientDataActions:
