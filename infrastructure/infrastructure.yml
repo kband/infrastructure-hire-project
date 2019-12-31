@@ -365,6 +365,9 @@ Resources:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Join ['-', [!Ref Name, !Ref Environment]]
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
     DependsOn:
       - PrivateSubnet1
 
@@ -374,7 +377,7 @@ Resources:
       ServiceName: !Join ['', [!Ref Name, !Ref Environment]]
       Cluster: !Join ['-', [!Ref Name, !Ref Environment]]
       LaunchType: FARGATE
-      DesiredCount: 3
+      DesiredCount: 1
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
@@ -547,7 +550,7 @@ Resources:
   SpendingAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if AWS spending is over $3
+      AlarmDescription: Alarm if AWS spending is over $5
       Namespace: AWS/Billing
       MetricName: EstimatedCharges
       Dimensions:
@@ -556,9 +559,181 @@ Resources:
       Statistic: Maximum
       Period: 21600
       EvaluationPeriods: 1
-      Threshold: 3
+      Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
-      - !Ref SNSEmail
+        - !Ref SNSEmail
       InsufficientDataActions:
-      - !Ref SNSEmail
+        - !Ref SNSEmail
+
+  LogAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if incoming log events drops below 2
+      Namespace: AWS/Logs
+      MetricName: IncomingLogEvents
+      Dimensions:
+      - Name: LogGroupName
+        Value: /ecs/ops-hire-project/dev
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSEmail
+      InsufficientDataActions:
+        - !Ref SNSEmail
+
+  TaskCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if number of tasks drops below 1
+      Namespace: ECS/ContainerInsights
+      MetricName: TaskCount
+      Dimensions:
+      - Name: ClusterName
+        Value: !Ref ElasticContainerServiceCluster
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSEmail
+      InsufficientDataActions:
+        - !Ref SNSEmail
+
+  ALBRequestsAnomalyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if incoming requests spike
+      ComparisonOperator: LessThanLowerOrGreaterThanUpperThreshold
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: ANOMALY_DETECTION_BAND(m1, 2)
+          Id: ad1
+        - Id: m1
+          MetricStat:
+            Metric:
+              Dimensions:
+              - Name: LoadBalancer
+                Value: !GetAtt LoadBalancer.LoadBalancerFullName
+              MetricName: RequestCount
+              Namespace: AWS/ApplicationELB
+            Period: !!int 900
+            Stat: Sum
+            Unit: Count
+      ThresholdMetricId: ad1
+      AlarmActions:
+        - !Ref SNSEmail
+      InsufficientDataActions:
+        - !Ref SNSEmail
+
+  AnomalyDetectorOnALBRequests:
+    Type: AWS::CloudWatch::AnomalyDetector
+    Properties:
+      Dimensions:
+      - Name: LoadBalancer
+        Value: !GetAtt LoadBalancer.LoadBalancerFullName
+      Namespace: AWS/ApplicationELB
+      MetricName: RequestCount
+      Stat: Sum
+
+  ErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if more than 5 503 errors are fired in an hour 
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Dimensions:
+      - Name: LoadBalancer
+        Value: !GetAtt LoadBalancer.LoadBalancerFullName
+      TreatMissingData: notBreaching
+      Statistic: Sum 
+      Period: 900
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSEmail
+      InsufficientDataActions:
+        - !Ref SNSEmail
+
+  ECSCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if average ECS cpu load is over 50% 
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: m1/m2*100
+          Id: e1
+          Label: CPUPercentage
+          ReturnData: true
+        - Id: m1
+          MetricStat:
+            Metric:
+              Dimensions:
+              - Name: ClusterName
+                Value: !Ref ElasticContainerServiceCluster
+              MetricName: CpuUtilized
+              Namespace: ECS/ContainerInsights
+            Period: 300 
+            Stat: Average
+          ReturnData: false
+        - Id: m2
+          MetricStat:
+            Metric:
+              Dimensions:
+              - Name: ClusterName
+                Value: !Ref ElasticContainerServiceCluster
+              MetricName: CpuReserved
+              Namespace: ECS/ContainerInsights
+            Period: 300 
+            Stat: Average
+          ReturnData: false
+      Threshold: 50
+      AlarmActions:
+        - !Ref SNSEmail
+      InsufficientDataActions:
+        - !Ref SNSEmail
+    
+  ECSMemAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm if average ECS memory load is over 75% 
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+        - Expression: m1/m2*100
+          Id: e1
+          Label: MemPercentage
+          ReturnData: true
+        - Id: m1
+          MetricStat:
+            Metric:
+              Dimensions:
+              - Name: ClusterName
+                Value: !Ref ElasticContainerServiceCluster
+              MetricName: MemoryUtilized
+              Namespace: ECS/ContainerInsights
+            Period: 300 
+            Stat: Average
+          ReturnData: false
+        - Id: m2
+          MetricStat:
+            Metric:
+              Dimensions:
+              - Name: ClusterName
+                Value: !Ref ElasticContainerServiceCluster
+              MetricName: MemoryReserved
+              Namespace: ECS/ContainerInsights
+            Period: 300 
+            Stat: Average
+          ReturnData: false
+      Threshold: 75
+      AlarmActions:
+        - !Ref SNSEmail
+      InsufficientDataActions:
+        - !Ref SNSEmail
