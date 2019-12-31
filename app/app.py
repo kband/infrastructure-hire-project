@@ -24,7 +24,7 @@ def VariableSlowHelloWorld(param):
 @app.route("/oh_no")
 def fail():
     #abort(503)
-    abort(503, description="Well this is embarrasing...")
+    abort(503, description="Well this is embarrassing...")
 
 @app.route("/status")
 def status():
