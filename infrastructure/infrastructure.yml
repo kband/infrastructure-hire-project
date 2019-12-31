@@ -550,7 +550,7 @@ Resources:
   SpendingAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if AWS spending is over $5
+      AlarmDescription: Alarm if AWS spending is over $10
       Namespace: AWS/Billing
       MetricName: EstimatedCharges
       Dimensions:
@@ -559,7 +559,7 @@ Resources:
       Statistic: Maximum
       Period: 21600
       EvaluationPeriods: 1
-      Threshold: 5
+      Threshold: 10
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref SNSEmail
