@@ -1,13 +1,16 @@
 # app.py - a minimal flask api using flask_restful
-from flask import Flask, abort, Response
+from flask import Flask, abort, Response, send_file
 from flask_restful import Resource, Api
 from time import sleep
 from os import environ
+import boto3
+import botocore
 
 app = Flask(__name__)
 api = Api(app)
 
 APP_VERSION = "20.01.001"
+BUCKET_NAME = "ops-hire-project-nic-dev"
 
 class HelloWorld(Resource):
     def get(self):
@@ -15,7 +18,7 @@ class HelloWorld(Resource):
 
 # A 'slow' route that takes 1s to return, or if an int is supplied, will return in int many seconds
 # Simulates waiting on a request to another microservice
-@app.route("/slow", defaults={'param': 1})
+@app.route("/slow/", defaults={'param': 1})
 @app.route("/slow/<int:param>")
 def VariableSlowHelloWorld(param):
     sleep(param)
@@ -35,6 +38,23 @@ def status():
             'region': environ.get('AWS_REGION', 'non-aws'),
             'app_version': APP_VERSION
             }
+
+# downloads a files from s3 (will work with sub folders as well) and pipes it back as an attachement/download.
+@app.route("/fetch/<path:file_name>")
+def fetch(file_name):
+    client = boto3.client('s3')
+
+    try:
+        file = client.get_object(Key=file_name, Bucket=BUCKET_NAME)
+    except botocore.exceptions.ClientError as e:
+        # since we don't have have 's3:ListBucket' the expected 404 is actually a 403
+        if e.response['ResponseMetadata']['HTTPStatusCode'] == 403:
+            abort(404, "The object does not exist.")
+        else:
+            raise
+
+    return send_file(file['Body'], as_attachment=True, mimetype="application/octet-stream", attachment_filename=file_name)
+
 
 api.add_resource(HelloWorld, '/')
 
