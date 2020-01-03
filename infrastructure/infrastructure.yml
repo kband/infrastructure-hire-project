@@ -500,6 +500,9 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       TargetType: ip
+      TargetGroupAttribute:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 10
       Name: !Join ['-', [!Ref Name, !Ref Environment]]
       Port: 8080
       Protocol: HTTP
