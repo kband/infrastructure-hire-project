@@ -406,6 +406,9 @@ Resources:
       ContainerDefinitions:
         - Name: !Ref Name
           Cpu: 256
+          Environment:
+            - Name: BUCKET_NAME
+              Value: !Ref S3Bucket
           Memory: 512
           # apparently you can't ref the ECR URI directly :(
           # format 028315980887.dkr.ecr.us-east-1.amazonaws.com/ops-hire-project-dev:latest
@@ -445,10 +448,14 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: 'sts:AssumeRole'
-      # ManagedPolicyArns:
-      #   -
-      # Policies:
-      #   -
+      Policies:
+        - PolicyName: !Sub '${Name}-${Environment}-s3_access'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'S3:GetObject'
+                Resource: !Sub 'arn:aws:s3:::${Name}-nic-${Environment}/*'
 
   ContainerSG:
     Type: AWS::EC2::SecurityGroup
@@ -737,3 +744,12 @@ Resources:
         - !Ref SNSEmail
       InsufficientDataActions:
         - !Ref SNSEmail
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${Name}-nic-${Environment}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+    DeletionPolicy: Delete
