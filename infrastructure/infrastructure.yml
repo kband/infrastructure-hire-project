@@ -158,42 +158,6 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  NatGwEip1:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
-  NatGwEip2:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
-  NatGwEip3:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
-  NAT1:
-    DependsOn: AttachGateway
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGwEip1.AllocationId
-      SubnetId: !Ref PublicSubnet1
-
-  NAT2:
-    DependsOn: AttachGateway
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGwEip2.AllocationId
-      SubnetId: !Ref PublicSubnet2
-
-  NAT3:
-    DependsOn: AttachGateway
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGwEip3.AllocationId
-      SubnetId: !Ref PublicSubnet3
-
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -233,30 +197,6 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
-
-  PrivateRoute1:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable1
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NAT1
-
-  PrivateRoute2:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable2
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NAT2
-
-  PrivateRoute3:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable3
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NAT3
 
   PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -465,6 +405,13 @@ Resources:
       SecurityGroupIngress:
           - SourceSecurityGroupId: !Ref LoadBalancerSG
             IpProtocol: -1
+  
+  ContainerSGIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ContainerSG
+      SourceSecurityGroupId: !Ref ContainerSG
+      IpProtocol: -1
 
   LoadBalancerSG:
     Type: AWS::EC2::SecurityGroup
@@ -494,12 +441,15 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckIntervalSeconds: 120
+      HealthCheckIntervalSeconds: 60 
       HealthCheckPath: /status
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       TargetType: ip
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: 10
       Name: !Join ['-', [!Ref Name, !Ref Environment]]
       Port: 8080
       Protocol: HTTP
@@ -744,6 +694,7 @@ Resources:
         - !Ref SNSEmail
       InsufficientDataActions:
         - !Ref SNSEmail
+
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -752,4 +703,71 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true 
+        IgnorePublicAcls: true 
+        RestrictPublicBuckets: true 
     DeletionPolicy: Delete
+
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument: !Sub '{
+        "Version":"2012-10-17",
+        "Statement":[{
+          "Effect":"Allow",
+          "Principal": "*",
+          "Action":["s3:GetObject"],
+          "Resource":["arn:aws:s3:::${Name}-nic-${Environment}/*",
+            "arn:aws:s3:::prod-${AWS::Region}-starport-layer-bucket/*"]
+        }]
+      }'
+      RouteTableIds:
+        - !Ref PrivateRouteTable1
+        - !Ref PrivateRouteTable2
+        - !Ref PrivateRouteTable3
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPC
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument: '{
+        "Version":"2012-10-17",
+        "Statement": [{
+          "Sid": "PutOnly",
+          "Principal": "*",
+          "Action": [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Effect": "Allow",
+          "Resource": "*"
+        }]
+      }'
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref ContainerSG
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcEndpointType: Interface
+      VpcId: !Ref VPC
+    
+  ECREndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref ContainerSG
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.dkr
+      VpcEndpointType: Interface
+      VpcId: !Ref VPC
