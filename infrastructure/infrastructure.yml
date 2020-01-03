@@ -406,6 +406,9 @@ Resources:
       ContainerDefinitions:
         - Name: !Ref Name
           Cpu: 256
+          Environment:
+            - Name: BUCKET_NAME
+              Value: !Ref S3Bucket
           Memory: 512
           # apparently you can't ref the ECR URI directly :(
           # format 028315980887.dkr.ecr.us-east-1.amazonaws.com/ops-hire-project-dev:latest

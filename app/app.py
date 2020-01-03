@@ -10,7 +10,8 @@ app = Flask(__name__)
 api = Api(app)
 
 APP_VERSION = "20.01.001"
-BUCKET_NAME = "ops-hire-project-nic-dev"
+# if running locally default to 'dev' environment
+BUCKET_NAME = environ.get('BUCKET_NAME', 'ops-hire-project-nic-dev')
 
 class HelloWorld(Resource):
     def get(self):
