@@ -1,7 +1,6 @@
 # app.py - a minimal flask api using flask_restful
 from flask import Flask, abort, Response, send_file
 from flask_restful import Resource, Api
-from time import sleep
 from os import environ
 import boto3
 import botocore
@@ -13,17 +12,23 @@ APP_VERSION = "20.01.001"
 # if running locally default to 'dev' environment
 BUCKET_NAME = environ.get('BUCKET_NAME', 'ops-hire-project-nic-dev')
 
+def fib(n):
+    if n < 2:
+        return 1
+    else:
+        return fib(n - 1) + fib(n - 2)
+
 class HelloWorld(Resource):
     def get(self):
         return {'hello': 'world'}
 
-# A 'slow' route that takes 1s to return, or if an int is supplied, will return in int many seconds
+# A 'slow' route that takes a parameter and calculates the Fibonacci number
 # Simulates waiting on a request to another microservice
 @app.route("/slow/", defaults={'param': 1})
 @app.route("/slow/<int:param>")
 def VariableSlowHelloWorld(param):
-    sleep(param)
-    return {'slowello': f'world: {param}'}
+    f = fib(param)
+    return {'slowello': f'world: {f}'}
 
 # route that throws a 503 error, apps have been known to do this unintentionally from time to time
 @app.route("/oh_no")
@@ -40,7 +45,7 @@ def status():
             'app_version': APP_VERSION
             }
 
-# downloads a files from s3 (will work with sub folders as well) and pipes it back as an attachement/download.
+# downloads a files from s3 (will work with sub folders as well) and pipes it back as an attachment/download.
 @app.route("/fetch/<path:file_name>")
 def fetch(file_name):
     client = boto3.client('s3')
