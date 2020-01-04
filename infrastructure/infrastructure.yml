@@ -62,6 +62,66 @@ Parameters:
     Description: Availability Zone 3
     Type: String
     Default: us-east-1c
+  
+  TaskCpu:
+    Description: Cpu setting for task
+    Type: Number
+    Default: 256
+
+  TaskMemory:
+    Description: Mem setting for task
+    Type: Number
+    Default: 512
+
+  ContainerPort:
+    Description: Container port
+    Type: Number
+    Default: 8080
+
+  ExternalPort:
+    Description: External port (listener, security groups)
+    Type: Number
+    Default: 443
+  
+  BaseDNSDomain:
+    Description: Subdomain this project lives under
+    Type: String
+    Default: cs1.nls.systems
+
+  OperatorEmailAddress:
+    Description: Email address to send alerts to
+    Type: String
+    Default: "nicholaslscott+cs1@gmail.com"
+
+  SpendingAlarmThreshold:
+    Description: Amount to trigger billing alarm
+    Type: Number
+    Default: 20
+
+  LogAlarmThreshold:
+    Description: Amount to trigger log alarm
+    Type: Number
+    Default: 1
+
+  TaskCountAlarmThreshold:
+    Description: Minimum number of running tasks
+    Type: Number
+    Default: 2
+
+  ErrorAlarmThreshold:
+    Description: Minimum number 503 errors per period
+    Type: Number
+    Default: 5
+  
+  CpuAlarmThreshold:
+    Description: Average cpu usage to alert over
+    Type: Number
+    Default: 75
+
+  MemoryAlarmThreshold:
+    Description: Average memory usage to alert over
+    Type: Number
+    Default: 75
 
 Resources:
   VPC:
@@ -329,15 +389,15 @@ Resources:
       TaskDefinition: !Ref ElasticContainerServiceTaskDefinition
       LoadBalancers:
         - ContainerName: !Ref Name
-          ContainerPort: 8080
+          ContainerPort: !Ref ContainerPort 
           TargetGroupArn: !Ref 'TargetGroup'
 
   ElasticContainerServiceTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Join ['-', [!Ref Name, !Ref Environment]]
-      Cpu: 256
-      Memory: 512
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -345,16 +405,16 @@ Resources:
       TaskRoleArn: !Ref ECSTaskRole
       ContainerDefinitions:
         - Name: !Ref Name
-          Cpu: 256
+          Cpu: !Ref TaskCpu
           Environment:
             - Name: BUCKET_NAME
               Value: !Ref S3Bucket
-          Memory: 512
+          Memory: !Ref TaskMemory
           # apparently you can't ref the ECR URI directly :(
           # format 028315980887.dkr.ecr.us-east-1.amazonaws.com/ops-hire-project-dev:latest
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Name}-${Environment}:latest"
           PortMappings:
-            - ContainerPort: 8080
+            - ContainerPort: !Ref ContainerPort
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -368,7 +428,7 @@ Resources:
   ECSExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['-', [!Ref Name, ExecutionRole]]
+      RoleName: !Join ['-', [!Ref Name, !Ref Environment, ExecutionRole]]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -381,7 +441,7 @@ Resources:
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Join ['-', [!Ref Name, TaskRole]]
+      RoleName: !Join ['-', [!Ref Name, !Ref Environment, TaskRole]]
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
@@ -420,8 +480,8 @@ Resources:
       VpcId: !Ref 'VPC'
       SecurityGroupIngress:
           - CidrIp: 0.0.0.0/0
-            FromPort: 443
-            ToPort: 443
+            FromPort: !Ref ExternalPort
+            ToPort: !Ref ExternalPort
             IpProtocol: "tcp"
 
   LoadBalancer:
@@ -451,7 +511,7 @@ Resources:
       - Key: deregistration_delay.timeout_seconds
         Value: 10
       Name: !Join ['-', [!Ref Name, !Ref Environment]]
-      Port: 8080
+      Port: !Ref ContainerPort
       Protocol: HTTP
       UnhealthyThresholdCount: 2
       VpcId: !Ref VPC
@@ -465,7 +525,7 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 443
+      Port: !Ref ExternalPort 
       Protocol: HTTPS
       SslPolicy: ELBSecurityPolicy-FS-1-2-2019-08
 
@@ -478,7 +538,7 @@ Resources:
   DNS:
     Type: AWS::Route53::HostedZone
     Properties:
-      Name: cs1.nls.systems
+      Name: !Ref BaseDNSDomain
 
   ALBAlias:
     Type: AWS::Route53::RecordSet
@@ -488,26 +548,26 @@ Resources:
         HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
       Comment: friendly name on ALB
       HostedZoneId: !Ref DNS
-      Name: !Sub "${Name}-${Environment}.cs1.nls.systems."
+      Name: !Sub "${Name}-${Environment}.${BaseDNSDomain}."
       Type: A
 
   ACM:
     Type: AWS::CertificateManager::Certificate
     Properties:
-      DomainName: '*.cs1.nls.systems'
+      DomainName: !Sub '*.${BaseDNSDomain}'
       ValidationMethod: DNS
 
   SNSEmail:
     Type: AWS::SNS::Topic
     Properties:
       Subscription:
-      - Endpoint: "nicholaslscott+cs1@gmail.com"
+      - Endpoint: !Ref OperatorEmailAddress
         Protocol: email
   
   SpendingAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if AWS spending is over $10
+      AlarmDescription: !Sub 'Alarm if AWS spending is over $${SpendingAlarmThreshold}'
       Namespace: AWS/Billing
       MetricName: EstimatedCharges
       Dimensions:
@@ -516,7 +576,7 @@ Resources:
       Statistic: Maximum
       Period: 21600
       EvaluationPeriods: 1
-      Threshold: 20
+      Threshold: !Ref SpendingAlarmThreshold
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref SNSEmail
@@ -526,7 +586,7 @@ Resources:
   LogAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if incoming log events drops below 2
+      AlarmDescription: !Sub 'Alarm if incoming log events drops below ${LogAlarmThreshold}'
       Namespace: AWS/Logs
       MetricName: IncomingLogEvents
       Dimensions:
@@ -535,7 +595,7 @@ Resources:
       Statistic: Maximum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 2
+      Threshold: !Ref LogAlarmThreshold
       ComparisonOperator: LessThanThreshold
       AlarmActions:
         - !Ref SNSEmail
@@ -545,7 +605,7 @@ Resources:
   TaskCountAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if number of tasks drops below 1
+      AlarmDescription: !Sub 'Alarm if number of tasks drops below ${TaskCountAlarmThreshold}'
       Namespace: ECS/ContainerInsights
       MetricName: TaskCount
       Dimensions:
@@ -554,7 +614,7 @@ Resources:
       Statistic: Maximum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 2
+      Threshold: !Ref TaskCountAlarmThreshold 
       ComparisonOperator: LessThanThreshold
       AlarmActions:
         - !Ref SNSEmail
@@ -600,7 +660,7 @@ Resources:
   ErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if more than 5 503 errors are fired in an hour 
+      AlarmDescription: !Sub 'Alarm if more than ${ErrorAlarmThreshold} 503 errors are fired in an hour'
       Namespace: AWS/ApplicationELB
       MetricName: HTTPCode_Target_5XX_Count
       Dimensions:
@@ -610,7 +670,7 @@ Resources:
       Statistic: Sum 
       Period: 900
       EvaluationPeriods: 1
-      Threshold: 5
+      Threshold: !Ref ErrorAlarmThreshold
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref SNSEmail
@@ -620,7 +680,7 @@ Resources:
   ECSCPUAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if average ECS cpu load is over 75% 
+      AlarmDescription: !Sub 'Alarm if average ECS cpu load is over ${CpuAlarmThreshold}%'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -650,7 +710,7 @@ Resources:
             Period: 300 
             Stat: Average
           ReturnData: false
-      Threshold: 75 
+      Threshold: !Ref CpuAlarmThreshold 
       AlarmActions:
         - !Ref SNSEmail
       InsufficientDataActions:
@@ -659,7 +719,7 @@ Resources:
   ECSMemAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if average ECS memory load is over 75% 
+      AlarmDescription: !Sub 'Alarm if average ECS memory load is over ${MemoryAlarmThreshold}%' 
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -775,7 +835,7 @@ Resources:
   AutoScalingRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${Name}-nic-${Environment}'
+      RoleName: !Sub '${Name}-${Environment}'
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
