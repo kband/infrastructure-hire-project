@@ -374,7 +374,7 @@ Resources:
   ElasticContainerService:
     Type: AWS::ECS::Service
     Properties:
-      ServiceName: !Join ['', [!Ref Name, !Ref Environment]]
+      ServiceName: !Join ['-', [!Ref Name, !Ref Environment]]
       Cluster: !Join ['-', [!Ref Name, !Ref Environment]]
       LaunchType: FARGATE
       DesiredCount: 1
@@ -503,7 +503,7 @@ Resources:
     Properties:
       HealthCheckIntervalSeconds: 60 
       HealthCheckPath: /status
-      HealthCheckProtocol: HTTP
+      HealthCheckProtocol: HTTPS
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       TargetType: ip
@@ -512,7 +512,7 @@ Resources:
         Value: 10
       Name: !Join ['-', [!Ref Name, !Ref Environment]]
       Port: !Ref ContainerPort
-      Protocol: HTTP
+      Protocol: HTTPS
       UnhealthyThresholdCount: 2
       VpcId: !Ref VPC
 
