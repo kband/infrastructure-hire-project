@@ -431,7 +431,7 @@ Resources:
       Scheme: internet-facing
       LoadBalancerAttributes:
       - Key: idle_timeout.timeout_seconds
-        Value: '30'
+        Value: '120'
       Subnets:
         - !Ref PublicSubnet1
         - !Ref PublicSubnet2
@@ -488,7 +488,7 @@ Resources:
         HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
       Comment: friendly name on ALB
       HostedZoneId: !Ref DNS
-      Name: ops-hire-project.cs1.nls.systems.
+      Name: !Sub "${Name}-${Environment}.cs1.nls.systems."
       Type: A
 
   ACM:
@@ -516,7 +516,7 @@ Resources:
       Statistic: Maximum
       Period: 21600
       EvaluationPeriods: 1
-      Threshold: 10
+      Threshold: 20
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref SNSEmail
@@ -620,7 +620,7 @@ Resources:
   ECSCPUAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Alarm if average ECS cpu load is over 50% 
+      AlarmDescription: Alarm if average ECS cpu load is over 75% 
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -650,7 +650,7 @@ Resources:
             Period: 300 
             Stat: Average
           ReturnData: false
-      Threshold: 50
+      Threshold: 75 
       AlarmActions:
         - !Ref SNSEmail
       InsufficientDataActions:
