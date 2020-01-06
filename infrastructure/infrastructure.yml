@@ -373,6 +373,7 @@ Resources:
 
   ElasticContainerService:
     Type: AWS::ECS::Service
+    DependsOn: LoadBalancer
     Properties:
       ServiceName: !Join ['-', [!Ref Name, !Ref Environment]]
       Cluster: !Join ['-', [!Ref Name, !Ref Environment]]
