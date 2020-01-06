@@ -1,5 +1,7 @@
 FROM python:3.7-alpine
 
+RUN apk add openssl
+
 COPY requirements.txt /
 
 RUN pip install -r /requirements.txt
@@ -8,7 +10,12 @@ COPY app/ app/
 
 WORKDIR /app
 
+RUN openssl req -x509 -newkey rsa:2048 -nodes -out cert.pem -keyout key.pem -days 3650 \
+     -subj "/C=NZ/ST=North Island/L=Wellington/O=NLS Systems./OU=DEVOP/CN=localhost"
+
 CMD [ "gunicorn", \
+    "--certfile", "cert.pem", \
+    "--keyfile", "key.pem", \
     "--workers=4", \
     "--timeout=120", \
     "--access-logfile", "-", \
